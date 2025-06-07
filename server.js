@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -16,10 +17,10 @@ io.on('connection', socket => {
     const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
     const otherClients = [...clients].filter(id => id !== socket.id);
 
-    // Notify the joining client about other users
+    // Send list of users already in the room to the new user
     socket.emit('all-users', otherClients);
 
-    // Notify other users a new user joined
+    // Notify others in the room a new user joined
     socket.to(roomId).emit('user-joined', socket.id);
 
     socket.on('offer', payload => {
@@ -41,6 +42,11 @@ io.on('connection', socket => {
         candidate: payload.candidate,
         from: socket.id,
       });
+    });
+
+    // Chat message handler: broadcast to room except sender
+    socket.on('chat-message', msg => {
+      socket.to(roomId).emit('chat-message', { id: socket.id, message: msg });
     });
 
     socket.on('disconnect', () => {
