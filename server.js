@@ -7,20 +7,28 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const roomPasswords = {}; // store passwords by roomId
+
 app.use(express.static('public'));
 
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
 
-  socket.on('join-room', roomId => {
+  socket.on('join-room', ({ roomId, password }) => {
+    // Check or set room password
+    if (!roomPasswords[roomId]) {
+      roomPasswords[roomId] = password;
+      console.log(`Room ${roomId} created with password.`);
+    } else if (roomPasswords[roomId] !== password) {
+      socket.emit('password-error', 'Incorrect password for room');
+      return;
+    }
+
     socket.join(roomId);
     const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
     const otherClients = [...clients].filter(id => id !== socket.id);
 
-    // Send list of users already in the room to the new user
     socket.emit('all-users', otherClients);
-
-    // Notify others in the room a new user joined
     socket.to(roomId).emit('user-joined', socket.id);
 
     socket.on('offer', payload => {
@@ -44,7 +52,6 @@ io.on('connection', socket => {
       });
     });
 
-    // Chat message handler: broadcast to room except sender
     socket.on('chat-message', msg => {
       socket.to(roomId).emit('chat-message', { id: socket.id, message: msg });
     });
