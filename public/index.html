@@ -3,209 +3,110 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>1-on-1 Video Call + Chat</title>
+<title>Secure Video Chat with Password</title>
 <style>
-  /* Reset and base */
-  * {
-    box-sizing: border-box;
-  }
   body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f7fa;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
+    font-family: Arial, sans-serif;
+    background: #222;
+    color: #eee;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: center;
     height: 100vh;
   }
-
-  header {
-    background: #4a90e2;
-    color: white;
-    padding: 15px 20px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-align: center;
-  }
-
-  #container {
-    flex: 1;
-    display: flex;
-    gap: 20px;
-    padding: 20px;
-  }
-
-  /* Video + chat layout */
-  #videos {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  video {
-    width: 100%;
-    height: 45vh;
-    background: black;
-    border-radius: 8px;
-    object-fit: cover;
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
-  }
-
-  #chat-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
-  }
-
-  #chat-messages {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-    border-bottom: 1px solid #ddd;
-  }
-
-  #chat-messages p {
-    margin: 8px 0;
-    padding: 8px 12px;
-    border-radius: 15px;
-    max-width: 80%;
-    word-wrap: break-word;
-  }
-
-  #chat-messages p.self {
-    background: #4a90e2;
-    color: white;
-    margin-left: auto;
-  }
-
-  #chat-messages p.other {
-    background: #e1e8f7;
-    color: #333;
-    margin-right: auto;
-  }
-
-  #chat-input {
-    display: flex;
-    padding: 10px;
-  }
-
-  #chat-input input {
-    flex: 1;
-    padding: 10px 15px;
-    border: 1px solid #ccc;
-    border-radius: 25px;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.3s;
-  }
-
-  #chat-input input:focus {
-    border-color: #4a90e2;
-  }
-
-  #chat-input button {
-    background: #4a90e2;
-    border: none;
-    color: white;
-    padding: 0 20px;
-    margin-left: 10px;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s;
-  }
-
-  #chat-input button:hover {
-    background: #357ABD;
-  }
-
   #room-selection {
-    padding: 20px;
-    background: white;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    margin-top: 40px;
     display: flex;
     gap: 10px;
-    align-items: center;
+  }
+  input {
+    padding: 8px 12px;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: none;
+  }
+  input:disabled {
+    background: #555;
+    color: #ccc;
+  }
+  button {
+    padding: 8px 16px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #4caf50;
+    color: white;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #888;
+    cursor: default;
+  }
+  #videos {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     justify-content: center;
   }
-
-  #room-selection input {
+  video {
+    background: black;
+    width: 320px;
+    height: 240px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #000;
+  }
+  #chat-container {
+    margin-top: 20px;
+    width: 80%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+  }
+  #chat-messages {
+    height: 200px;
+    background: #333;
     padding: 10px;
-    font-size: 1rem;
-    width: 200px;
-    border-radius: 25px;
-    border: 1px solid #ccc;
-    outline: none;
-    transition: border-color 0.3s;
+    border-radius: 6px;
+    overflow-y: auto;
+    color: #ddd;
+    font-size: 0.9rem;
   }
-
-  #room-selection input:focus {
-    border-color: #4a90e2;
-  }
-
-  #room-selection button {
-    padding: 10px 25px;
-    font-size: 1rem;
-    background: #4a90e2;
-    border: none;
-    color: white;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s;
-  }
-
-  #room-selection button:hover {
-    background: #357ABD;
-  }
-
-  #status {
-    text-align: center;
+  #chat-input-container {
     margin-top: 10px;
-    color: #333;
-    font-weight: 600;
+    display: flex;
+    gap: 10px;
   }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    #container {
-      flex-direction: column;
-      padding: 10px;
-    }
-
-    #videos video {
-      height: 200px;
-    }
+  #chat-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: none;
+  }
+  #status {
+    margin-top: 10px;
+    font-style: italic;
+    color: #ffa;
   }
 </style>
 </head>
 <body>
 
-<header>1-on-1 Video Call + Chat</header>
-
 <div id="room-selection">
   <input id="room-input" placeholder="Enter room ID" />
+  <input id="password-input" placeholder="Enter password" type="password" />
   <button id="join-btn">Join Room</button>
 </div>
 
 <div id="status"></div>
 
-<div id="container" style="display:none;">
-  <div id="videos">
-    <video id="local-video" autoplay muted playsinline></video>
-    <video id="remote-video" autoplay playsinline></video>
-  </div>
+<div id="videos"></div>
 
-  <div id="chat-container">
-    <div id="chat-messages"></div>
-    <form id="chat-input" autocomplete="off">
-      <input id="chat-message-input" placeholder="Type a message..." />
-      <button type="submit">Send</button>
-    </form>
+<div id="chat-container" style="display:none;">
+  <div id="chat-messages"></div>
+  <div id="chat-input-container">
+    <input id="chat-input" placeholder="Type a message..." />
+    <button id="chat-send-btn">Send</button>
   </div>
 </div>
 
@@ -213,161 +114,201 @@
 <script>
   const socket = io();
 
-  // UI Elements
-  const localVideo = document.getElementById('local-video');
-  const remoteVideo = document.getElementById('remote-video');
-  const joinBtn = document.getElementById('join-btn');
   const roomInput = document.getElementById('room-input');
+  const passwordInput = document.getElementById('password-input');
+  const joinBtn = document.getElementById('join-btn');
   const statusDiv = document.getElementById('status');
-  const container = document.getElementById('container');
+  const videosDiv = document.getElementById('videos');
 
+  const chatContainer = document.getElementById('chat-container');
   const chatMessages = document.getElementById('chat-messages');
-  const chatInputForm = document.getElementById('chat-input');
-  const chatMessageInput = document.getElementById('chat-message-input');
+  const chatInput = document.getElementById('chat-input');
+  const chatSendBtn = document.getElementById('chat-send-btn');
 
-  let localStream;
-  let peerConnection;
-  let roomId;
-
-  const configuration = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-  };
+  let roomId = null;
+  let localStream = null;
+  let peers = {}; // socketId => RTCPeerConnection
 
   joinBtn.onclick = async () => {
     roomId = roomInput.value.trim();
+    const password = passwordInput.value;
+
     if (!roomId) {
       alert('Please enter a room ID');
+      return;
+    }
+    if (!password) {
+      alert('Please enter a password');
       return;
     }
 
     joinBtn.disabled = true;
     roomInput.disabled = true;
+    passwordInput.disabled = true;
     statusDiv.textContent = 'Joining room...';
 
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
+      addVideoStream(localStream, 'local');
     } catch (e) {
       alert('Could not get user media');
       console.error(e);
-      joinBtn.disabled = false;
-      roomInput.disabled = false;
-      statusDiv.textContent = '';
+      resetUI();
       return;
     }
 
-    socket.emit('join-room', roomId);
+    socket.emit('join-room', { roomId, password });
   };
 
-  socket.on('all-users', (users) => {
-    if (users.length > 0) {
-      createPeerConnection(users[0]);
-      makeOffer(users[0]);
-    }
-    container.style.display = 'flex';
-    statusDiv.textContent = `Joined room: ${roomId}`;
+  socket.on('password-error', msg => {
+    alert(msg);
+    resetUI();
   });
 
-  socket.on('user-joined', (userId) => {
-    console.log('User joined:', userId);
+  socket.on('all-users', users => {
+    statusDiv.textContent = `Connected to room "${roomId}". Users in room: ${users.length + 1}`;
+    chatContainer.style.display = 'flex';
+
+    users.forEach(userId => {
+      createPeerConnection(userId, true);
+    });
   });
 
-  socket.on('offer', async (payload) => {
-    if (!peerConnection) {
-      createPeerConnection(payload.caller);
-    }
-    try {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-
-      socket.emit('answer', { target: payload.caller, sdp: peerConnection.localDescription });
-    } catch (e) {
-      console.error('Error handling offer:', e);
-    }
+  socket.on('user-joined', userId => {
+    createPeerConnection(userId, false);
   });
 
-  socket.on('answer', async (payload) => {
-    try {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-    } catch (e) {
-      console.error('Error handling answer:', e);
-    }
+  socket.on('offer', async ({ sdp, caller }) => {
+    const pc = createPeerConnection(caller, false);
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('answer', { target: caller, sdp: pc.localDescription });
   });
 
-  socket.on('ice-candidate', async (payload) => {
-    try {
-      await peerConnection.addIceCandidate(payload.candidate);
-    } catch (e) {
-      console.error('Error adding ICE candidate:', e);
+  socket.on('answer', async ({ sdp, responder }) => {
+    const pc = peers[responder];
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  });
+
+  socket.on('ice-candidate', ({ candidate, from }) => {
+    const pc = peers[from];
+    if (pc) {
+      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
+        console.error('Error adding ICE candidate:', e);
+      });
     }
   });
 
-  socket.on('user-left', (userId) => {
-    console.log('User left:', userId);
-    remoteVideo.srcObject = null;
-    if (peerConnection) {
-      peerConnection.close();
-      peerConnection = null;
+  socket.on('user-left', userId => {
+    if (peers[userId]) {
+      peers[userId].close();
+      delete peers[userId];
     }
-    statusDiv.textContent = 'User left the room';
+    const video = document.getElementById(userId);
+    if (video) {
+      video.remove();
+    }
+    statusDiv.textContent = `User ${userId} left the room.`;
   });
 
-  // Chat functionality
-  chatInputForm.addEventListener('submit', e => {
-    e.preventDefault();
-    const message = chatMessageInput.value.trim();
-    if (!message) return;
+  // Chat
 
-    addChatMessage(message, true);
-    socket.emit('chat-message', message);
-    chatMessageInput.value = '';
+  chatSendBtn.onclick = () => {
+    sendMessage();
+  };
+
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
   });
 
-  socket.on('chat-message', data => {
-    addChatMessage(data.message, false);
+  socket.on('chat-message', ({ id, message }) => {
+    appendChatMessage(id, message);
   });
 
-  function addChatMessage(message, self) {
-    const p = document.createElement('p');
-    p.textContent = message;
-    p.className = self ? 'self' : 'other';
-    chatMessages.appendChild(p);
+  function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+    appendChatMessage('You', msg);
+    socket.emit('chat-message', msg);
+    chatInput.value = '';
+  }
+
+  function appendChatMessage(user, msg) {
+    const div = document.createElement('div');
+    div.textContent = `${user}: ${msg}`;
+    chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  function createPeerConnection(otherUserId) {
-    peerConnection = new RTCPeerConnection(configuration);
+  // Video / WebRTC
 
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  function createPeerConnection(userId, isInitiator) {
+    if (peers[userId]) return peers[userId];
 
-    peerConnection.ontrack = (event) => {
-      remoteVideo.srcObject = event.streams[0];
-    };
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+      ],
+    });
 
-    peerConnection.onicecandidate = (event) => {
+    peers[userId] = pc;
+
+    // Add local stream tracks to peer
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+    pc.onicecandidate = event => {
       if (event.candidate) {
-        socket.emit('ice-candidate', { target: otherUserId, candidate: event.candidate });
+        socket.emit('ice-candidate', { target: userId, candidate: event.candidate });
       }
     };
 
-    peerConnection.onconnectionstatechange = () => {
-      if (peerConnection.connectionState === 'connected') {
-        statusDiv.textContent = 'Connected to peer';
-      }
+    pc.ontrack = event => {
+      const remoteStream = event.streams[0];
+      addVideoStream(remoteStream, userId);
     };
+
+    if (isInitiator) {
+      pc.onnegotiationneeded = async () => {
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit('offer', { target: userId, sdp: pc.localDescription });
+        } catch (e) {
+          console.error(e);
+        }
+      };
+    }
+
+    return pc;
   }
 
-  async function makeOffer(userId) {
-    try {
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      socket.emit('offer', { target: userId, sdp: peerConnection.localDescription });
-    } catch (e) {
-      console.error('Error making offer:', e);
+  function addVideoStream(stream, id) {
+    let video = document.getElementById(id);
+    if (!video) {
+      video = document.createElement('video');
+      video.id = id;
+      video.autoplay = true;
+      video.playsInline = true;
+      videosDiv.appendChild(video);
+    }
+    video.srcObject = stream;
+    if (id === 'local') {
+      video.muted = true;
+    }
+  }
+
+  function resetUI() {
+    joinBtn.disabled = false;
+    roomInput.disabled = false;
+    passwordInput.disabled = false;
+    statusDiv.textContent = '';
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
     }
   }
 </script>
-
 </body>
 </html>
