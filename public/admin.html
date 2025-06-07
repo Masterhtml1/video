@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Panel - Live Video Calls</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 0; padding: 10px;
+  }
+  h1 {
+    text-align: center;
+  }
+  #rooms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+  }
+  .room {
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    padding: 10px;
+    width: 340px;
+    background: #222;
+  }
+  .room h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #4caf50;
+    text-align: center;
+  }
+  .videos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  video {
+    width: 150px;
+    height: 113px;
+    background: black;
+    border-radius: 6px;
+    box-shadow: 0 0 6px #000;
+  }
+  #status {
+    text-align: center;
+    margin-bottom: 15px;
+    font-style: italic;
+    color: #afa;
+  }
+</style>
+</head>
+<body>
+<h1>Admin Panel - Live Video Calls</h1>
+<div id="status">Connecting...</div>
+<div id="rooms"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const adminSocket = io('/admin');
+
+  const roomsDiv = document.getElementById('rooms');
+  const statusDiv = document.getElementById('status');
+
+  // Store peer connections per room/user
+  const peers = {}; // { roomId: { socketId: RTCPeerConnection } }
+  const remoteStreams = {}; // { roomId: { socketId: MediaStream } }
+
+  adminSocket.on('connect', () => {
+    statusDiv.textContent = 'Connected as admin';
+  });
+
+  adminSocket.on('disconnect', () => {
+    statusDiv.textContent = 'Disconnected from server';
+  });
+
+  // Receive rooms and users list
+  adminSocket.on('rooms-update', roomsInfo => {
+    // roomsInfo: { roomId: [userId, userId, ...], ... }
+    updateRooms(roomsInfo);
+  });
+
+  // Join all rooms (admin uses special password 'admin_secret')
+  function updateRooms(roomsInfo) {
+    // Remove rooms no longer active
+    for (const roomId of Object.keys(peers)) {
+      if (!roomsInfo[roomId]) {
+        closeRoomPeers(roomId);
+      }
+    }
+
+    for (const roomId in roomsInfo) {
+      if (!peers[roomId]) peers[roomId] = {};
+      if (!remoteStreams[roomId]) remoteStreams[roomId] = {};
+
+      // Join room (server allows admin with 'admin_secret')
+      adminSocket.emit('join-room', roomId);
+
+      const users = roomsInfo[roomId];
+
+      users.forEach(userId => {
+        if (userId === adminSocket.id) return; // skip self
+        if (!peers[roomId][userId]) {
+          createPeerConnection(roomId, userId);
+        }
+      });
+
+      // Remove peers no longer in room
+      for (const userId in peers[roomId]) {
+        if (!users.includes(userId)) {
+          peers[roomId][userId].close();
+          delete peers[roomId][userId];
+          removeVideo(roomId, userId);
+          delete remoteStreams[roomId][userId];
+        }
+      }
+    }
+
+    renderRooms();
+  }
+
+  function closeRoomPeers(roomId) {
+    if (!peers[roomId]) return;
+    for (const userId in peers[roomId]) {
+      peers[roomId][userId].close();
+      removeVideo(roomId, userId);
+    }
+    delete peers[roomId];
+    delete remoteStreams[roomId];
+    renderRooms();
+  }
+
+  // WebRTC for admin to receive streams from all users
+  function createPeerConnection(roomId, userId) {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    peers[roomId][userId] = pc;
+
+    pc.onicecandidate = event => {
+      if (event.candidate) {
+        adminSocket.emit('ice-candidate', { target: userId, candidate: event.candidate });
+      }
+    };
+
+    pc.ontrack = event => {
+      const stream = event.streams[0];
+      if (!remoteStreams[roomId][userId]) {
+        remoteStreams[roomId][userId] = stream;
+        addVideo(roomId, userId, stream);
+      }
+    };
+
+    // Admin does NOT send media, only receives
+    // Create offer to initiate connection
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        adminSocket.emit('offer', { target: userId, sdp: pc.localDescription });
+      })
+      .catch(console.error);
+  }
+
+  adminSocket.on('answer', ({ sdp, responder }) => {
+    // Admin receives answer from user
+    for (const roomId in peers) {
+      if (peers[roomId][responder]) {
+        peers[roomId][responder].setRemoteDescription(new RTCSessionDescription(sdp));
+        break;
+      }
+    }
+  });
+
+  adminSocket.on('ice-candidate', ({ candidate, from }) => {
+    for (const roomId in peers) {
+      if (peers[roomId][from]) {
+        peers[roomId][from].addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
+        break;
+      }
+    }
+  });
+
+  function addVideo(roomId, userId, stream) {
+    const roomDiv = document.getElementById(`room-${roomId}`);
+    if (!roomDiv) return;
+
+    let video = document.getElementById(`video-${roomId}-${userId}`);
+    if (!video) {
+      video = document.createElement('video');
+      video.id = `video-${roomId}-${userId}`;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true; // Avoid feedback in admin panel
+      roomDiv.querySelector('.videos').appendChild(video);
+    }
+    video.srcObject = stream;
+  }
+
+  function removeVideo(roomId, userId) {
+    const video = document.getElementById(`video-${roomId}-${userId}`);
+    if (video) video.remove();
+  }
+
+  function renderRooms() {
+    roomsDiv.innerHTML = '';
+
+    for (const roomId in peers) {
+      const roomDiv = document.createElement('div');
+      roomDiv.className = 'room';
+      roomDiv.id = `room-${roomId}`;
+
+      const title = document.createElement('h2');
+      title.textContent = `Room: ${roomId}`;
+      roomDiv.appendChild(title);
+
+      const videosDiv = document.createElement('div');
+      videosDiv.className = 'videos';
+      roomDiv.appendChild(videosDiv);
+
+      // Add video placeholders for current streams
+      for (const userId in peers[roomId]) {
+        const video = document.createElement('video');
+        video.id = `video-${roomId}-${userId}`;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        videosDiv.appendChild(video);
+        if (remoteStreams[roomId] && remoteStreams[roomId][userId]) {
+          video.srcObject = remoteStreams[roomId][userId];
+        }
+      }
+
+      roomsDiv.appendChild(roomDiv);
+    }
+  }
+</script>
+</body>
+</html>
