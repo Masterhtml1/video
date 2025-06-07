@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>1-on-1 Video Call</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #videos { display: flex; gap: 10px; margin-top: 20px; }
+    video { width: 45%; border: 1px solid #ccc; border-radius: 4px; }
+    #room-selection { margin-bottom: 20px; }
+    #status { margin-top: 10px; color: green; }
+  </style>
+</head>
+<body>
+  <h1>1-on-1 Video Call</h1>
+
+  <div id="room-selection">
+    <input id="room-input" placeholder="Enter room ID" />
+    <button id="join-btn">Join Room</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="videos">
+    <video id="local-video" autoplay muted playsinline></video>
+    <video id="remote-video" autoplay playsinline></video>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const joinBtn = document.getElementById('join-btn');
+    const roomInput = document.getElementById('room-input');
+    const statusDiv = document.getElementById('status');
+
+    let localStream;
+    let peerConnection;
+    let roomId;
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }
+      ]
+    };
+
+    joinBtn.onclick = async () => {
+      roomId = roomInput.value.trim();
+      if (!roomId) {
+        alert('Please enter a room ID');
+        return;
+      }
+
+      await startLocalStream();
+      socket.emit('join-room', roomId);
+      statusDiv.textContent = `Joined room: ${roomId}`;
+      joinBtn.disabled = true;
+      roomInput.disabled = true;
+    };
+
+    async function startLocalStream() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+      } catch (e) {
+        alert('Could not get user media');
+        console.error(e);
+      }
+    }
+
+    socket.on('all-users', async (users) => {
+      if (users.length > 0) {
+        const userToCall = users[0];
+        createPeerConnection(userToCall);
+
+        // Create offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        socket.emit('offer', { target: userToCall, sdp: peerConnection.localDescription });
+      }
+    });
+
+    socket.on('user-joined', async (userId) => {
+      console.log('User joined:', userId);
+    });
+
+    socket.on('offer', async (payload) => {
+      createPeerConnection(payload.caller);
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      socket.emit('answer', { target: payload.caller, sdp: peerConnection.localDescription });
+    });
+
+    socket.on('answer', async (payload) => {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    });
+
+    socket.on('ice-candidate', async (payload) => {
+      try {
+        await peerConnection.addIceCandidate(payload.candidate);
+      } catch (e) {
+        console.error('Error adding received ice candidate', e);
+      }
+    });
+
+    socket.on('user-left', (userId) => {
+      console.log('User left:', userId);
+      remoteVideo.srcObject = null;
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      statusDiv.textContent = `User left the room`;
+    });
+
+    function createPeerConnection(userId) {
+      peerConnection = new RTCPeerConnection(configuration);
+
+      // Add local tracks to connection
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      // Listen for remote tracks
+      peerConnection.ontrack = (event) => {
+        remoteVideo.srcObject = event.streams[0];
+      };
+
+      // Listen for ICE candidates and send them to peer
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('ice-candidate', { target: userId, candidate: event.candidate });
+        }
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        if (peerConnection.connectionState === 'connected') {
+          statusDiv.textContent = 'Connected to peer';
+        }
+      };
+    }
+  </script>
+</body>
+</html>
